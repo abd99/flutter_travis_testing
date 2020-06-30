@@ -70,42 +70,7 @@ env:
     - API=23 ABI=x86         GOO=default
     - API=23 ABI=armeabi-v7a GOO=default
 
-    - API=22 ABI=x86_64      GOO=google_apis
-    - API=22 ABI=x86         GOO=google_apis
-    - API=22 ABI=armeabi-v7a GOO=google_apis
-    - API=22 ABI=x86_64      GOO=default
-    - API=22 ABI=x86         GOO=default
-    - API=22 ABI=armeabi-v7a GOO=default
-
-    - API=21 ABI=x86_64      GOO=google_apis
-    - API=21 ABI=x86         GOO=google_apis
-    - API=21 ABI=armeabi-v7a GOO=google_apis
-    - API=21 ABI=x86_64      GOO=default
-    - API=21 ABI=x86         GOO=default
-    - API=21 ABI=armeabi-v7a GOO=default
-
-    # API=20  -- not released
-
-    - API=19 ABI=x86         GOO=google_apis
-    - API=19 ABI=x86         GOO=default
-    - API=19 ABI=armeabi-v7a GOO=google_apis
-    - API=19 ABI=armeabi-v7a GOO=default
-
-    - API=18 ABI=x86         GOO=google_apis
-    - API=18 ABI=x86         GOO=default
-    - API=18 ABI=armeabi-v7a GOO=google_apis
-    - API=18 ABI=armeabi-v7a GOO=default
-
-    - API=17 ABI=x86         GOO=google_apis
-    - API=17 ABI=x86         GOO=default
-    - API=17 ABI=armeabi-v7a GOO=google_apis
-    - API=17 ABI=armeabi-v7a GOO=default
-
-    - API=16 ABI=x86         GOO=google_apis
-    - API=16 ABI=x86         GOO=default
-    - API=16 ABI=armeabi-v7a GOO=google_apis
-    - API=16 ABI=armeabi-v7a GOO=default
-
+ 
     # API=15 -- not supported by flutter
     # API=14 -- not released
     # API=13 -- not released
@@ -144,28 +109,6 @@ jobs:
 
     - env: API=23 ABI=armeabi-v7a GOO=google_apis # hangs during Installing build/app/outputs/apk/app.apk...
     - env: API=23 ABI=armeabi-v7a GOO=default     # hangs after installing apk
-
-    - env: API=22 ABI=x86_64      GOO=google_apis # hangs during gradle assemble
-    - env: API=22 ABI=armeabi-v7a GOO=google_apis # hangs after installing apk
-    - env: API=22 ABI=x86_64      GOO=default     # flutter drive hangs during installation of apk
-
-    - env: API=21 ABI=armeabi-v7a GOO=google_apis # Timeout (600 seconds) reached; failed to start emulator
-    - env: API=21 ABI=armeabi-v7a GOO=default     # hangs before test starts
-
-    - env: API=19 ABI=armeabi-v7a GOO=google_apis # hangs after installing apk
-    - env: API=19 ABI=armeabi-v7a GOO=default     # hangs on Installing build/app/outputs/apk/app.apk...
-
-    - env: API=18 ABI=x86         GOO=google_apis # hangs during test
-    - env: API=18 ABI=x86         GOO=default     # hangs during flutter doctor
-    - env: API=18 ABI=armeabi-v7a GOO=google_apis # flutter driver: incorrect success after installing apk
-
-    - env: API=17 ABI=x86         GOO=google_apis # FlutterDriver: It is taking an unusually long time to connect to the VM...
-    - env: API=17 ABI=x86         GOO=default     # FlutterDriver: It is taking an unusually long time to connect to the VM...
-
-    - env: API=16 ABI=x86         GOO=google_apis # FlutterDriver: It is taking an unusually long time to connect to the VM...
-    - env: API=16 ABI=x86         GOO=default     # FlutterDriver: It is taking an unusually long time to connect to the VM...
-    - env: API=16 ABI=armeabi-v7a GOO=google_apis # hangs after installing apk
-    - env: API=16 ABI=armeabi-v7a GOO=default     # hangs after installing apk
 
 before_install:
   - java -version
