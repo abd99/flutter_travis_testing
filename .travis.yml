@@ -1,84 +1,90 @@
-language: dart
-
-env:
-  global:
-    - DARTSDK=./flutter/bin/cache/dart-sdk/bin
-    - DARTFMT=$DARTSDK/dartfmt
-    - FLUTTER=./flutter/bin/flutter
-    - FLUTTER_UP=../flutter/bin/flutter
-    - FLUTTER_GITHUB=https://github.com/flutter/flutter.git
-    - CODECOV=https://codecov.io/bash
-    - PACKAGES=packages
-    - APP=app
-    - ANDROID_API=28
-
-install:
-  - git clone $FLUTTER_GITHUB -b stable --depth 1
-  - $FLUTTER doctor
-  - $FLUTTER pub get
-
 jobs:
   include:
-    - stage: Formatting
-      script:
-        - $DARTFMT -n $PACKAGES --set-exit-if-changed
 
-    - stage: Packages' Flutter Test
-      script:
-        - $FLUTTER test --coverage $PACKAGES
-      after_success:
-        - bash <(curl -s $CODECOV)
-
-    - stage: App's Flutter Test
-      script:
-        - cd $APP
-        - $FLUTTER_UP test --coverage
-      after_success:
-        - bash <(curl -s $CODECOV)
-
-    - stage: iOS Integration Tests
-      os: osx
-      osx_image: xcode11
+    - stage: Unit Testing
+      language: generic
+      os: linux
+      env: running unit and widget tests with code coverage
       before_script:
+        - sudo apt-get install -y --no-install-recommends lib32stdc++6 libstdc++6 > /dev/null
+        - git clone https://github.com/flutter/flutter.git -b beta
+        - export PATH="$PATH":"$HOME/.pub-cache/bin"
+        - export PATH=`pwd`/flutter/bin:`pwd`/flutter/bin/cache/dart-sdk/bin:$PATH
+        - flutter precache
+        - flutter doctor -v
+        - pub global activate coverage
+      script: flutter test --coverage
+      after_success: bash <(curl -s https://codecov.io/bash) -f coverage/lcov.info
+
+    - &integration-test-stage
+      stage: Integration Testing
+      sudo: true
+      dist: trusty
+      language: generic
+      os: linux
+      env: running driver on emulator
+      # Run integration tests on android
+      before_install:
+        - sudo apt-get install -y --no-install-recommends lib32stdc++6 libstdc++6 > /dev/null
+        # Install the Android SDK Dependency.
+        - export ANDROID_HOME=/opt/android-sdk-linux
+        - cd /opt
+        - wget -q https://dl.google.com/android/repository/sdk-tools-linux-4333796.zip -O android-sdk-tools.zip
+        - unzip -q android-sdk-tools.zip -d ${ANDROID_HOME}
+        - rm android-sdk-tools.zip
+        - cd -
+        - PATH=${PATH}:${ANDROID_HOME}/tools:${ANDROID_HOME}/tools/bin:${ANDROID_HOME}/platform-tools
+        # Silence warning.
+        - mkdir -p ~/.android
+        - touch ~/.android/repositories.cfg
+        # Accept licenses before installing components, no need to echo y for each component
+        - yes | sdkmanager --licenses
+        # Platform tools
+        - sdkmanager "emulator" "tools" "platform-tools" > /dev/null
+        - sdkmanager --list | head -15
+        # install older packages (for emulator)
+        - sdkmanager "build-tools;25.0.2" "platforms;android-25" > /dev/null
+        # Create and start emulator.
+        - EMULATOR_API_LEVEL=22
+        - ANDROID_ABI="default;armeabi-v7a"
+        - sdkmanager "system-images;android-$EMULATOR_API_LEVEL;$ANDROID_ABI" > /dev/null
+        - sdkmanager --list | head -15
+        - echo no | avdmanager create avd --force -n test -k "system-images;android-$EMULATOR_API_LEVEL;$ANDROID_ABI"
+        - $ANDROID_HOME/emulator/emulator -avd test -no-audio -no-window -gpu swiftshader &
+        # install flutter
+        - git clone https://github.com/flutter/flutter.git -b beta
+        - export PATH="$PATH":"$HOME/.pub-cache/bin"
+        - export PATH=`pwd`/flutter/bin:`pwd`/flutter/bin/cache/dart-sdk/bin:$PATH
+        - flutter precache
+        - flutter doctor -v
+        # Wait for emulator to finish startup.
+        - ./script/android-wait-for-emulator.sh
+        - adb shell input keyevent 82
+        - flutter devices
+      script: travis_retry flutter drive
+    - <<: *integration-test-stage
+      os: osx
+      # use oldest flutter supported version of xcode
+      osx_image: xcode8.0
+      env: running driver on simulator
+      # Run integration tests on ios
+      before_install:
         - open /Applications/Xcode.app/Contents/Developer/Applications/Simulator.app
-        - export HOMEBREW_NO_AUTO_UPDATE=1
+        - brew update
         - brew install libimobiledevice
         - brew install ideviceinstaller
         - brew install ios-deploy
         - brew install cocoapods || echo 'ignore exit(1)'
         - brew link --overwrite cocoapods
-      script:
-        - cd $APP
-        - $FLUTTER_UP driver --target=test_driver/app.dart77
+        - git clone https://github.com/flutter/flutter.git -b beta
+        - export PATH="$PATH":"$HOME/.pub-cache/bin"
+        - export PATH=`pwd`/flutter/bin:`pwd`/flutter/bin/cache/dart-sdk/bin:$PATH
+        - flutter precache
+        - flutter doctor -v
+        - flutter devices
 
-    - stage: Android Integration Tests
-      language: android
-      dist: trusty
-      android:
-        components:
-          - tools
-          - platform-tools
-          - build-tools-25.0.3
-          - android-24
-          - android-22
-          - extra-google-google_play_services
-          - extra-google-m2repository
-          - extra-android-m2repository
-          - sys-img-armeabi-v7a-android-22
-      licenses:
-        - 'android-sdk-preview-license-52d11cd2'
-        - 'android-sdk-license-.+'
-        - 'google-gdk-license-.+'
-      before_install:
-        - yes | sdkmanager "platforms;android-28"
-        - echo no | android create avd --force -n test -t android-22 --abi armeabi-v7a -c 32M
-        - emulator -avd test -no-audio -no-window &
-        - android-wait-for-emulator
-        - adb devices
-        - adb shell input keyevent 82 &
-      script:
-        - $FLUTTER --version
-        - $FLUTTER doctor
-        - cd $APP
-        - $FLUTTER_UP devices
-        - $FLUTTER_UP driver --target=test_driver/app.dart
+    - stage: Ready to deploy
+      os: osx
+      language: generic
+      env: not implemented 🤓
+      script: echo "Deploying to store ..."
