@@ -7,7 +7,7 @@ set +e
 
 bootanim=""
 failcounter=0
-timeout_in_sec=60 # 6 minutes
+timeout_in_sec=300 # 6 minutes
 #timeout_in_sec=600 # 10 minutes
 
 until [[ "$bootanim" =~ "stopped" ]]; do

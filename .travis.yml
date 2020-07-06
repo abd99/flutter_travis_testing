@@ -47,7 +47,7 @@ env:
     # PATH order is incredibly important. e.g. the 'emulator' script exists in more than one place!
     - PATH=${ANDROID_HOME}:${ANDROID_HOME}/emulator:${TOOLS}:${TOOLS}/bin:${ANDROID_HOME}/platform-tools:${PATH}
     - FLUTTER_CHANNEL=stable
-    - FLUTTER_VERSION=1.12.13+hotfix.5-${FLUTTER_CHANNEL}
+    - FLUTTER_VERSION=1.17.4-${FLUTTER_CHANNEL}
     - FLUTTER_HOME=${HOME}/flutter
     - PATH=${HOME}/.pub-cache/bin:${PATH}
     - PATH=${FLUTTER_HOME}/bin:${FLUTTER_HOME}/bin/cache/dart-sdk/bin:${PATH}
