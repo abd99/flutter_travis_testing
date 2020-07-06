@@ -66,7 +66,7 @@ before_script:
   - git clone https://github.com/flutter/flutter.git -b beta
   - ./flutter/bin/flutter doctor
   # Wait for emulator to startup.
-  - ./scripts/android-wait-for-emulator.sh
+  - ./android-wait-for-emulator.sh
   - adb shell input keyevent 82
 
 script:
