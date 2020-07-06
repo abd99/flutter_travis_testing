@@ -49,7 +49,7 @@ before_script:
   - git clone https://github.com/flutter/flutter.git -b beta
   - ./flutter/bin/flutter doctor
   # Wait for emulator to startup.
-  - echo no | android create avd --force -n test -t android-$SYS --abi $ABI -c 100M
+  - echo no | android create avd --force -n test --tag android-$SYS --abi $ABI -c 100M
   - emulator -avd test -no-audio -no-window &
   - android-wait-for-emulator
   - adb shell input keyevent 82 &
