@@ -218,7 +218,7 @@ before_install:
   - rm android-sdk-tools.zip
 
   # Avoid harmless sdkmanager warning
-  - mkdir ~/.android
+  # - mkdir ~/.android
   - echo 'count=0' > ~/.android/repositories.cfg
 
   # Accept licenses before installing components, no need to echo y for each component
