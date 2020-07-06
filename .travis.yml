@@ -218,7 +218,7 @@ before_install:
   - rm android-sdk-tools.zip
 
   # Avoid harmless sdkmanager warning
-  # - mkdir ~/.android
+  - mkdir ~/.android
   - echo 'count=0' > ~/.android/repositories.cfg
 
   # Accept licenses before installing components, no need to echo y for each component
@@ -297,26 +297,36 @@ install:
 
 before_script:
   # wait for emulator to finish startup
-  - chmod 777 android-wait-for-emulator.sh
-  - ./android-wait-for-emulator.sh
+    - chmod 777 android-wait-for-emulator.sh
+  - ./script/android-wait-for-emulator.sh
   # unlock screen
   - adb shell input keyevent 82 &
 
 script:
   - flutter pub get
-  - flutter test
   # run test with retries
-  - flutter drive --target=test_driver/app.dart || flutter drive --target=test_driver/app.dart || flutter drive --target=test_driver/app.dart
+  - flutter driver test_driver/app.dart || flutter driver test_driver/app.dart || flutter driver test_driver/app.dart
+
+
+# script:
+#  - flutter pub get
+#  - flutter test
+#  # run test with retries
+#  - flutter drive --target=test_driver/app.dart || flutter drive --target=test_driver/app.dart || flutter drive --target=test_driver/app.dart
+
+
+
+#before_cache:
+#  - rm -f $HOME/.gradle/caches/modules-2/modules-2.lock
+#  - curl "${GRAVIS}.clean_gradle_cache.sh" --output ~/.clean_gradle_cache.sh
+#  - bash ~/.clean_gradle_cache.sh
+#
+#cache:
+#  directories:
+#    - $HOME/.gradle/caches/
+#    - $HOME/.gradle/wrapper/
 
 
 
 
-before_cache:
-  - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
-  - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
-cache:
-  directories:
-    - $HOME/.gradle/caches/
-    - $HOME/.gradle/wrapper/
-    - $HOME/.android/build-cache
-    - $HOME/.pub-cache
+
