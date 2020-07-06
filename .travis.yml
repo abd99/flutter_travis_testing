@@ -43,14 +43,14 @@ before_install:
   # fix timezone warning
   - if [ $TRAVIS_OS_NAME == "osx" ]; then sudo ln -sf /usr/share/zoneinfo/US/Pacific /etc/localtime; fi
   # use the absolute emulator path in case older version installed (on default path)
-  - $ANDROID_HOME/emulator/emulator -avd test -no-audio -no-window -gpu swiftshader &
+  # - $ANDROID_HOME/emulator/emulator -avd test -no-audio -no-window -gpu swiftshader &
   
 before_script:
   - git clone https://github.com/flutter/flutter.git -b beta
   - ./flutter/bin/flutter doctor
   # Wait for emulator to startup.
-  - chmod 777 android-wait-for-emulator.sh
-  - ./android-wait-for-emulator.sh
+  - $ANDROID_HOME/emulator/emulator -avd test -no-audio -no-window -gpu swiftshader &
+  - android-wait-for-emulator
   - adb shell input keyevent 82
 
 script:
