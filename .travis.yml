@@ -325,7 +325,7 @@ before_script:
 script:
 #  - flutter pub get
   # run test with retries
-  - flutter drive test_driver/app.dart || flutter drive test_driver/app.dart || flutter drive test_driver/app.dart
+  - flutter drive --target=test_driver/app.dart || flutter drive --target=test_driver/app.dart || flutter drive --target=test_driver/app.dart
 
 #before_cache:
 #  - rm -f $HOME/.gradle/caches/modules-2/modules-2.lock
