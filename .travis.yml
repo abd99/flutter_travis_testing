@@ -305,15 +305,16 @@ install:
 
   # install flutter (while emulator is starting)
   - sudo apt-get install -y --no-install-recommends lib32stdc++6 libstdc++6 > /dev/null
-  - wget --quiet --output-document=flutter.tar.xz https://storage.googleapis.com/flutter_infra/${FLUTTER_CHANNEL}/stable/linux/flutter_linux_1.17.5-stable.tar.xz
-  - tar xf flutter.tar.xz -C $(dirname ${FLUTTER_HOME})
-  - rm flutter.tar.xz
-
+  # - wget --quiet --output-document=flutter.tar.xz https://storage.googleapis.com/flutter_infra/${FLUTTER_CHANNEL}/stable/linux/flutter_linux_1.17.5-stable.tar.xz
+  # - tar xf flutter.tar.xz -C $(dirname ${FLUTTER_HOME})
+  # - rm flutter.tar.xz
+  - git clone https://github.com/flutter/flutter.git -b stable
   # Switch back to our target JDK version to build and run tests
   - JDK="${TARGET_JDK}"
   - source ~/.install-jdk-travis.sh
 
-  - flutter doctor -v
+  # - flutter doctor -v
+  - ./flutter/bin/flutter doctor
 
 before_script:
   # wait for emulator to finish startup
@@ -325,7 +326,9 @@ before_script:
 script:
 #  - flutter pub get
   # run test with retries
-  - flutter drive --target=test_driver/app.dart || flutter drive --target=test_driver/app.dart || flutter drive --target=test_driver/app.dart
+  # - flutter drive --target=test_driver/app.dart || flutter drive --target=test_driver/app.dart || flutter drive --target=test_driver/app.dart
+  - ./flutter/bin/flutter test
+  - ./flutter/bin/flutter drive --target=test_driver/app.dart || ./flutter/bin/flutter drive --target=test_driver/app.dart || ./flutter/bin/flutter drive --target=test_driver/app.dart
 
 #before_cache:
 #  - rm -f $HOME/.gradle/caches/modules-2/modules-2.lock
