@@ -1,54 +1,194 @@
-language: android
-dist: trusty
-android:
-  components:
-    # Uncomment the lines below if you want to
-    # use the latest revision of Android SDK Tools
-    # - tools
-    # - platform-tools
+language: generic
+dist: bionic # ubuntu 18.04
 
-    # The BuildTools version used by your project
-    - build-tools-26.0.2
+# specify global envs and jobs
+env:
+  global:
+    - ANDROID_TOOLS=4333796 # android-28
+#    - ANDROID_SDK_VERSION=29 # The current compileSdkVersion from build.gradle
+#    - ANDROID_BUILD_TOOLS_VERSION=29.0.2 # Depends on compileSdkVersion
+    - ANDROID_SDK_VERSION=28 # The current compileSdkVersion from build.gradle
+    - ANDROID_BUILD_TOOLS_VERSION=28.0.3 # Depends on compileSdkVersion
+    - ANDROID_HOME=${HOME}/android-sdk
+    - GRAVIS="https://raw.githubusercontent.com/DanySK/Gravis-CI/master/"
+    - JDK="1.8" # the JDK used for running tests
+    - TOOLS=${ANDROID_HOME}/tools
+    # PATH order is incredibly important. e.g. the 'emulator' script exists in more than one place!
+    - PATH=${ANDROID_HOME}:${ANDROID_HOME}/emulator:${TOOLS}:${TOOLS}/bin:${ANDROID_HOME}/platform-tools:${PATH}
+    - FLUTTER_CHANNEL=stable
+    - FLUTTER_VERSION=1.17.4-${FLUTTER_CHANNEL}
+    - FLUTTER_HOME=${HOME}/flutter
+    - PATH=${HOME}/.pub-cache/bin:${PATH}
+    - PATH=${FLUTTER_HOME}/bin:${FLUTTER_HOME}/bin/cache/dart-sdk/bin:${PATH}
 
-    # The SDK version used to compile your project
-    - android-26
+  # matrix of APIxABIxGOO
+  # (see "sdkmanager --list --verbose| grep ^system-images" for full list)
+  jobs:
+    - API=29 ABI=x86_64      GOO=default
+    - API=29 ABI=x86         GOO=default
 
-    # Additional components
-    - extra-google-google_play_services
-    - extra-google-m2repository
-    - extra-android-m2repository
+    - API=28 ABI=x86_64      GOO=google_apis_playstore
+    - API=28 ABI=x86         GOO=google_apis_playstore
+    - API=28 ABI=x86_64      GOO=google_apis
+    - API=28 ABI=x86_64      GOO=default
+    - API=28 ABI=x86         GOO=default
 
-    # Specify at least one system image,
-    # if you need to run emulator(s) during your tests
-    - sys-img-x86-android-26
-    - sys-img-armeabi-v7a-android-17
-  licenses:
-    - 'android-sdk-preview-license-52d11cd2'
-    - 'android-sdk-license-.+'
-    - 'google-gdk-license-.+'
+   
+
+jobs:
+  fast_finish: true
+  # jobs that are flakey or fail consistently
+  allow_failures:
+    - env: API=29 ABI=x86_64      GOO=default     # hangs while resolving gradle dependencies, etc...
+    - env: API=29 ABI=x86         GOO=default     # hangs while resolving dependencies
+
+    - env: API=28 ABI=x86_64      GOO=google_apis_playstore # flutter driver hangs
+    - env: API=28 ABI=x86         GOO=google_apis_playstore # flutter driver hangs
+
     
-    
-# Emulator Management: Create, Start and Wait
-before_script:
-  - git clone https://github.com/flutter/flutter.git -b beta
+
+before_install:
+  - java -version
+
+  # Set up KVM
+  - sudo apt-get -y --no-install-recommends install bridge-utils libpulse0 libvirt-bin qemu-kvm virtinst ubuntu-vm-builder > /dev/null
+  - sudo apt-get install -y libxtst6 libnss3-dev libnspr4 libxss1 libasound2 libatk-bridge2.0-0 libgtk-3-0 libgdk-pixbuf2.0-0
+  # add travis user to groups
+  - sudo adduser $USER libvirt
+  - sudo adduser $USER kvm
+
+  # Set up JDK 8 for Android SDK
+  - curl "${GRAVIS}.install-jdk-travis.sh" --output ~/.install-jdk-travis.sh
+  - export TARGET_JDK="${JDK}"
+  - JDK="1.8" # used when running sdkmanager
+  - source ~/.install-jdk-travis.sh
+
+  # Set up Android SDK
+  - wget -q "https://dl.google.com/android/repository/sdk-tools-linux-$ANDROID_TOOLS.zip" -O android-sdk-tools.zip
+  - unzip -q android-sdk-tools.zip -d ${ANDROID_HOME}
+  - rm android-sdk-tools.zip
+
+  # Avoid harmless sdkmanager warning
+  - mkdir ~/.android
+  - echo 'count=0' > ~/.android/repositories.cfg
+
+  # Accept licenses before installing components, no need to echo y for each component
+  - yes | sdkmanager --licenses >/dev/null
+
+install:
+  # Download SDK tools
+  - sdkmanager "platform-tools" >/dev/null
+  - sdkmanager "tools" >/dev/null # A second time per Travis docs, gets latest versions
+  - sdkmanager "build-tools;$ANDROID_BUILD_TOOLS_VERSION" >/dev/null # Implicit gradle dependency - gradle drives changes
+  - sdkmanager "platforms;android-$API" >/dev/null # We need the API of the emulator we will run
+  - sdkmanager "platforms;android-$ANDROID_SDK_VERSION" >/dev/null # We need the API of the current compileSdkVersion from build.gradle
+  - sdkmanager "extras;android;m2repository" >/dev/null
+  - sdkmanager "system-images;android-$ANDROID_SDK_VERSION;default;x86" >/dev/null # install system images used in gradle.build
+  - sdkmanager "system-images;android-$API;$GOO;$ABI" >/dev/null # install system images for emulator
+
+  - sdkmanager "emulator" >/dev/null
+  - ${ANDROID_HOME}/emulator/emulator -version
+  # Fixed in version 29.3.1 https://androidstudio.googleblog.com/2019/12/emulator-2930-stable.html
+  # Pinning should no longer be necessary: https://issuetracker.google.com/issues/145622251
+#  - |
+#    if [[ $ABI =~ "x86" ]]; then
+#      # Download a pinned version of the emulator since default version can cause issues
+#      emulator_version=5889189 # 29.2.11.0 (build_id 6031357) or later ==> 29.2.1.0 (build_id 5889189)
+#      curl -fo emulator.zip "https://dl.google.com/android/repository/emulator-linux-$emulator_version.zip"
+#      rm -rf "${ANDROID_HOME}/emulator"
+#      unzip -q emulator.zip -d "${ANDROID_HOME}"
+#      rm -f emulator.zip
+#    fi
+  - |
+    if [[ $ABI =~ "arm" ]]; then
+      # Download a pinned version of the emulator since default version can cause issues
+      emulator_version=5264690 # 29.2.1.0 (build_id 5889189) ==> 28.0.23.0 (build_id 5264690)
+      # sudo apt-get install -y libunwind8 libc++1
+      curl -fo emulator.zip "https://dl.google.com/android/repository/emulator-linux-$emulator_version.zip"
+      rm -rf "${ANDROID_HOME}/emulator"
+      unzip -q emulator.zip -d "${ANDROID_HOME}"
+      rm -f emulator.zip
+      # install build tools and platforms for arm (to allow emulator to run)
+      sdkmanager "build-tools;25.0.2" "platforms;android-25" > /dev/null
+    fi
+  - ${ANDROID_HOME}/emulator/emulator -version
+
+  # Create an Android emulator
+#  - echo no | avdmanager --verbose create avd --force -n test -k "system-images;android-$API;$GOO;$ABI" -c 10M
+  - echo no | avdmanager --verbose create avd --force -n test -k "system-images;android-$API;$GOO;$ABI"
+#  - EMU_PARAMS="
+#      -verbose
+#      -no-snapshot
+#      -no-window
+#      -no-audio
+#      -no-boot-anim
+#      -camera-back none
+#      -camera-front none
+#      -selinux permissive
+#      -qemu -m 2048"
+  - EMU_PARAMS="
+    -avd test
+    -verbose
+    -no-window
+    -no-audio
+    "
+  - EMU_COMMAND="emulator"
+  - |
+    if [[ $ABI =~ "x86" ]]; then
+      #EMU_COMMAND="emulator-headless"
+      echo -n # noop
+    else
+      # emulate graphics if running on ARM
+      EMU_PARAMS="${EMU_PARAMS} -gpu swiftshader"
+    fi
+  # This double "sudo" monstrosity is used to have Travis execute the
+  # emulator with its new group permissions and help preserve the rule
+  # of least privilege.
+  - sudo -E sudo -u $USER -E bash -c "${ANDROID_HOME}/emulator/${EMU_COMMAND} ${EMU_PARAMS} &"
+
+  # install flutter (while emulator is starting)
+  - sudo apt-get install -y --no-install-recommends lib32stdc++6 libstdc++6 > /dev/null
+  # - wget --quiet --output-document=flutter.tar.xz https://storage.googleapis.com/flutter_infra/${FLUTTER_CHANNEL}/stable/linux/flutter_linux_1.17.5-stable.tar.xz
+  # - tar xf flutter.tar.xz -C $(dirname ${FLUTTER_HOME})
+  # - rm flutter.tar.xz
+  - git clone https://github.com/flutter/flutter.git -b stable
+  # Switch back to our target JDK version to build and run tests
+  - JDK="${TARGET_JDK}"
+  - source ~/.install-jdk-travis.sh
+
+  # - flutter doctor -v
   - ./flutter/bin/flutter doctor
-  - echo no | android create avd --force -n test -t android-26 --abi default/x86 -c 100M
-  - emulator -avd test -no-audio -no-window &
-  - android-wait-for-emulator
+
+before_script:
+  # wait for emulator to finish startup
+  - chmod 777 script/android-wait-for-emulator.sh 
+  - ./script/android-wait-for-emulator.sh
+  # unlock screen
   - adb shell input keyevent 82 &
-  
-    
+
 script:
+#  - flutter pub get
+  # run test with retries
+  # - flutter drive --target=test_driver/app.dart || flutter drive --target=test_driver/app.dart || flutter drive --target=test_driver/app.dart
   - ./flutter/bin/flutter test
-  - ./flutter/bin/flutter drive --target=test_driver/app.dart
-  
-  
+  - ./flutter/bin/flutter drive --target=test_driver/app.dart || ./flutter/bin/flutter drive --target=test_driver/app.dart || ./flutter/bin/flutter drive --target=test_driver/app.dart
+
+#before_cache:
+#  - rm -f $HOME/.gradle/caches/modules-2/modules-2.lock
+#  - curl "${GRAVIS}.clean_gradle_cache.sh" --output ~/.clean_gradle_cache.sh
+#  - bash ~/.clean_gradle_cache.sh
+
 before_cache:
-  - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
-  - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
+  - rm -rfv ~/.gradle/caches/?*.?*.?*
+  - rm -rf ~/.gradle/caches/transforms-1
+  - rm -rf ~/.gradle/caches/transforms-2
+  - rm -rf ~/.gradle/caches/journal-1
+  - rm -rf ~/.gradle/caches/modules-2
+  - find ~/.gradle/caches/ -name "*.lock" -type f -delete
+  - find ~/.gradle/caches -type f -mtime 0 -exec stat -c "%z %n" {} \; | sort
 cache:
   directories:
+    - $HOME/.pub-cache
     - $HOME/.gradle/caches/
     - $HOME/.gradle/wrapper/
-    - $HOME/.android/build-cache
-    - $HOME/.pub-cache
+
